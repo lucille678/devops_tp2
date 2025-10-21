@@ -1,0 +1,49 @@
+version: "3.9"  # Version du format Docker Compose
+services:
+  database:
+    image: postgres:15-alpine  # Utilise PostgreSQL 15 en version Alpine
+    container_name: my-postgres-student-dockercompose  # Nom du container
+    environment:
+      POSTGRES_DB: db        # Nom de la base de données
+      POSTGRES_USER: usr     # Utilisateur PostgreSQL
+      POSTGRES_PASSWORD: pwd # Mot de passe de l'utilisateur
+    volumes:
+      - pgdata:/var/lib/postgresql/data       # Volume pour persister les données
+      - ./db/SQL:/docker-entrypoint-initdb.d:ro  # Scripts SQL d'initialisation
+    networks:
+      - simple-api-student-net  # Ajoute la base de données au réseau interne pour communiquer avec d'autres services
+
+  api-student:
+    build:
+      context: .           # Contexte de build pour le Dockerfile de l'application
+      dockerfile: Dockerfile
+    container_name: api-student-dockercompose
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/db  # Connexion JDBC vers le service "database"
+      SPRING_DATASOURCE_USERNAME: usr  # Utilisateur de la base de données pour Spring Boot
+      SPRING_DATASOURCE_PASSWORD: pwd  # Mot de passe de la base de données pour Spring Boot
+    depends_on:
+      - database  # Assure que la base de données est démarrée avant l'application
+    networks:
+      - simple-api-student-net  # Connecte l'application au même réseau que la base de données
+    expose:
+      - "8080"  # Expose le port 8080 uniquement pour les autres containers du réseau
+
+  httpd:
+    build:
+      context: ./web         # Contexte pour construire l'image Apache
+      dockerfile: Dockerfile
+    container_name: my-http-proxy2-dockercompose
+    ports:
+      - "8081:80"  # Mappe le port 80 du container vers 8081 de l'hôte
+    depends_on:
+      - api-student  # Apache démarre après que l'application soit prête
+    networks:
+      - simple-api-student-net  # Connecte Apache au réseau interne pour accéder à l'application
+
+networks:
+  simple-api-student-net:  # Définition du réseau interne Docker pour la communication des services
+
+volumes:
+  pgdata:  # Volume nommé pour persister les données PostgreSQL
+
