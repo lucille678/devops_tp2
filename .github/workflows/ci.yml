@@ -1,4 +1,4 @@
-names: CD devops 2025
+name: CD devops 2025
 
 on:
   push:
@@ -6,47 +6,47 @@ on:
       - main 
       - develop
 
-
+jobs:
   # define job to build and publish docker image
   build-and-push-docker-image:
-  needs: test-backend
-  # run only when code is compiling and tests are passing
-  runs-on: ubuntu-24.04
+    needs: test-backend
+    # run only when code is compiling and tests are passing
+    runs-on: ubuntu-24.04
 
-  env:
-    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-    DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-  # steps to perform in job
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    # steps to perform in job
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Login to DockerHub
-      run: echo "${{ env.DOCKERHUB_TOKEN }}" | docker login --username ${{ env.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Login to DockerHub
+        run: echo "${{ env.DOCKERHUB_TOKEN }}" | docker login --username ${{ env.DOCKERHUB_USERNAME }} --password-stdin
 
 
-    - name: Build image and push backend
-      uses: docker/build-push-action@v6
-      with:
-        # relative path to the place where source code with Dockerfile is located
-        context: ./
-        # Note: tags has to be all lower-case
-        tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops-simple-api:latest
-        push: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build image and push backend
+        uses: docker/build-push-action@v6
+        with:
+          # relative path to the place where source code with Dockerfile is located
+          context: ./
+          # Note: tags has to be all lower-case
+          tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops-simple-api:latest
+          push: ${{ github.ref == 'refs/heads/main' }}
 
-    - name: Build image and push database
-      uses: docker/build-push-action@v6
-      with:
-        context: ./db
-        tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops:latest
-        push: ${{ github.ref == 'refs/heads/main' }}
-        # DO the same for database
+      - name: Build image and push database
+        uses: docker/build-push-action@v6
+        with:
+          context: ./db
+          tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops:latest
+          push: ${{ github.ref == 'refs/heads/main' }}
+          # DO the same for database
 
-    - name: Build image and push httpd
-      uses: docker/build-push-action@v6
-      with:
-        context: ./httpd
-        tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops-simple-httpd:latest
-        push: ${{ github.ref == 'refs/heads/main' }}
-      # DO the same for httpd
+      - name: Build image and push httpd
+        uses: docker/build-push-action@v6
+        with:
+          context: ./httpd
+          tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops-simple-httpd:latest
+          push: ${{ github.ref == 'refs/heads/main' }}
+        # DO the same for httpd
