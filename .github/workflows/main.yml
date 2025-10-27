@@ -30,4 +30,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # fourni automatiquement par GitHub
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # ton token secret SonarCloud
         run: 
-          mvn -B verify sonar:sonar -Dsonar.projectKey=lucille678_devops_tp2 -Dsonar.organization=Lucille -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }}  --file ./simple-api-student_main/pom.xml
+          mvn -B verify sonar:sonar -Dsonar.projectKey=lucille678_devops_tp2 -Dsonar.organization=Lucille -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }}  --file ./pom.xml
