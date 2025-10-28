@@ -6,31 +6,37 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-
 jobs:
   deploy:
     runs-on: ubuntu-24.04
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H lucille.finet.takima.cloud >> ~/.ssh/known_hosts
-          eval $(ssh-agent -s)
+          
+      - name: Test SSH connection
+        run: ssh -v admin@lucille.finet.takima.cloud "echo 'SSH connection successful'"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub on remote server
+        run: |
+          ssh admin@lucille.finet.takima.cloud "docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}"
 
       - name: Deploy to remote server
         run: |
-          ssh admin@lucille.finet.takima.cloud "
+          ssh admin@lucille.finet.takima.cloud '
+            # Check Docker status
+            docker info || exit 1
+
             # Create network if it doesn't exist
             docker network create app-network || true
 
@@ -68,6 +74,9 @@ jobs:
               --network app-network \
               -p 80:80 \
               ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-httpd:latest
-          "
+
+            # Verify containers are running
+            docker ps -a
+          '
 
 
