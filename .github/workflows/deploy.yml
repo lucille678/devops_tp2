@@ -19,64 +19,100 @@ jobs:
 
       - name: Configure SSH
         run: |
+          echo "Setting up SSH..."
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H lucille.finet.takima.cloud >> ~/.ssh/known_hosts
+          echo "Adding host to known_hosts..."
+          ssh-keyscan -H lucille.finet.takima.cloud >> ~/.ssh/known_hosts 2>/dev/null
           
-      - name: Test SSH connection
-        run: ssh -v admin@lucille.finet.takima.cloud "echo 'SSH connection successful'"
+      - name: Verify SSH connection
+        run: |
+          echo "Testing SSH connection..."
+          if ssh -o StrictHostKeyChecking=accept-new admin@lucille.finet.takima.cloud "echo 'SSH connection successful'"; then
+            echo "SSH connection test passed"
+          else
+            echo "SSH connection failed"
+            exit 1
+          fi
+
+      - name: Setup Docker on remote
+        run: |
+          echo "Verifying Docker installation on remote server..."
+          if ! ssh admin@lucille.finet.takima.cloud "command -v docker"; then
+            echo "Docker not found on remote server"
+            exit 1
+          fi
 
       - name: Login to Docker Hub on remote server
         run: |
+          echo "Logging into Docker Hub on remote server..."
           ssh admin@lucille.finet.takima.cloud "docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}"
 
       - name: Deploy to remote server
         run: |
-          ssh admin@lucille.finet.takima.cloud '
-            # Check Docker status
+          echo "Starting deployment process..."
+          ssh -tt admin@lucille.finet.takima.cloud '
+            set -x
+            echo "Checking Docker status..."
             docker info || exit 1
 
-            # Create network if it doesn't exist
+            echo "Creating Docker network..."
             docker network create app-network || true
 
-            # Stop and remove old containers
+            echo "Stopping and removing old containers..."
             docker stop simple-api db httpd || true
             docker rm simple-api db httpd || true
 
-            # Pull latest images
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-database:latest
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-httpd:latest
+            echo "Pulling latest images..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest || exit 1
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-database:latest || exit 1
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-httpd:latest || exit 1
 
-            # Start database
+            echo "Starting database container..."
             docker run -d --name db \
               --network app-network \
               -e POSTGRES_DB=db \
               -e POSTGRES_USER=usr \
               -e POSTGRES_PASSWORD=pwd \
-              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-database:latest
+              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-database:latest || exit 1
 
-            # Wait for database to be ready
+            echo "Waiting for database to be ready..."
             sleep 10
 
-            # Start API
+            echo "Starting API container..."
             docker run -d --name simple-api \
               --network app-network \
               -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/db \
               -e SPRING_DATASOURCE_USERNAME=usr \
               -e SPRING_DATASOURCE_PASSWORD=pwd \
               -p 8080:8080 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest
+              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest || exit 1
 
-            # Start HTTP server
+            echo "Starting HTTP server container..."
             docker run -d --name httpd \
               --network app-network \
               -p 80:80 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-httpd:latest
+              ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api-httpd:latest || exit 1
 
-            # Verify containers are running
+            echo "Verifying deployment..."
             docker ps -a
+            echo "Checking container logs..."
+            docker logs db
+            docker logs simple-api
+            docker logs httpd
+          '
+
+      - name: Verify deployment
+        run: |
+          echo "Testing deployed services..."
+          ssh admin@lucille.finet.takima.cloud '
+            echo "Database container status:"
+            docker inspect db --format="{{.State.Status}}"
+            echo "API container status:"
+            docker inspect simple-api --format="{{.State.Status}}"
+            echo "HTTP server container status:"
+            docker inspect httpd --format="{{.State.Status}}"
           '
 
 
