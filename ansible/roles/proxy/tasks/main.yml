@@ -1,0 +1,11 @@
+- name: Run httpd proxy container
+  docker_container:
+    name: httpd
+    image: lucille1111/tp-devops-simple-httpd:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "80:80"
+    networks:
+      - name: simple-api-student-net
+

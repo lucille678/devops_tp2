@@ -1,0 +1,15 @@
+# structure du playbook
+- hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+# liste des rôles à exécuter
+  roles:
+    - docker
+    - network
+    - database
+    - proxy
+    - app

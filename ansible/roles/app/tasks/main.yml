@@ -1,0 +1,19 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Démarrer le conteneur de l'application (simple-api)
+  docker_container:
+    name: simple-api
+    image: lucille1111/tp-devops-simple-api:latest
+    state: started
+    restart_policy: always
+    pull: yes       # ou true
+    recreate: yes   # ou true
+    recreate: true  
+    env:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/{{ db_name }}"
+      SPRING_DATASOURCE_USERNAME: "{{ db_user }}"
+      SPRING_DATASOURCE_PASSWORD: "{{ db_password }}"
+    networks:
+      - name: simple-api-student-net
+    expose:
+      - "8080"

@@ -1,0 +1,18 @@
+- name: Copy .env file
+  copy:
+    src: /mnt/c/Users/Windows10/TD3_devops/ansible/.env.yml
+    dest: /home/admin/db.env
+
+- name: Run database container
+  docker_container:
+    name: db
+    image: lucille1111/tp-devops:latest   # image DB DockerHub
+    state: started
+    restart_policy: always
+    networks:
+      - name: simple-api-student-net
+    env:
+      POSTGRES_USER: "{{ db_user }}"
+      POSTGRES_PASSWORD: "{{ db_password }}"
+      POSTGRES_DB: "{{ db_name }}"
+       

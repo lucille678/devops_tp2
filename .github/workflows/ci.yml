@@ -50,3 +50,25 @@ jobs:
           tags:  ${{secrets.DOCKERHUB_USERNAME}}/tp-devops-simple-httpd:latest
           push: ${{ github.ref == 'refs/heads/main' }}
         # DO the same for httpd
+
+
+  deploy-to-server:
+    needs: build-and-push-docker-image
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main'   # déploiement seulement depuis main
+    env:
+      SERVER_IP: ${{ secrets.SERVER_IP }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy with Ansible
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ env.SERVER_IP }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          script: ansible-playbook -i hosts deploy.yml
+
